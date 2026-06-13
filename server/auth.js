@@ -1,5 +1,4 @@
-import e, { Router } from 'express';
-import fetch from 'node-fetch';
+import { Router } from 'express';
 
 const router = Router();
 
@@ -131,3 +130,7 @@ router.get('/token', (req, res) => {
 });
 
 export default router;
+
+export function getAccessToken() {
+    return tokens.access;
+}
