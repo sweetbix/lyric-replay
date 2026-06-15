@@ -51,7 +51,7 @@ function LyricsPanel({ lines, activeIndex, onLineClick }) {
           // Attach the ref to whichever line is currently active
           ref={i === activeIndex ? activeRef : null}
           key={i}
-          onClick={() => line.annotation && onLineClick(line.annotation)}
+          onClick={() => line.annotation && onLineClick(line.annotation, line.text)}
           className={`
             text-2xl font-semibold transition-all duration-300 leading-snug
             ${i === activeIndex
@@ -70,20 +70,45 @@ function LyricsPanel({ lines, activeIndex, onLineClick }) {
   )
 }
 
-function AnnotationPanel({ annotation }) {
-  if (!annotation) {
-    return (
-      <div className="w-80 border-l border-zinc-800 px-6 py-12 flex items-center justify-center">
-        <p className="text-zinc-600 text-sm text-center">
-          Click an underlined lyric to see its annotation
-        </p>
-      </div>
-    )
-  }
+function AnnotationPanel({ annotation, triggerLine }) {
+  const [visible, setVisible] = useState(false)
+  const [displayed, setDisplayed] = useState(null)
+  const [displayedLine, setDisplayedLine] = useState(null)
+
+  useEffect(() => {
+    if (!annotation) return
+    // Fade out briefly then swap content and fade back in
+    setVisible(false)
+    const t = setTimeout(() => {
+      setDisplayed(annotation)
+      setDisplayedLine(triggerLine)
+      setVisible(true)
+    }, 150)
+    return () => clearTimeout(t)
+  }, [annotation])
+
   return (
-    <div className="w-80 border-l border-zinc-800 px-6 py-12">
-      <p className="text-zinc-400 text-xs uppercase tracking-widest mb-4">Genius Annotation</p>
-      <p className="text-zinc-200 text-sm leading-relaxed">{annotation}</p>
+    <div className="fixed right-0 top-0 bottom-24 w-80 border-l border-zinc-800 flex flex-col justify-center">
+      <div className="px-6 py-8 overflow-y-auto">
+        {!displayed ? (
+          <p className="text-zinc-600 text-sm text-center mt-16">
+            Annotations will appear here as the song plays
+          </p>
+        ) : (
+          <div
+            className="transition-all duration-300"
+            style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(8px)' }}
+          >
+            {displayedLine && (
+              <p className="text-zinc-500 text-xs italic mb-3 leading-relaxed border-l-2 border-zinc-700 pl-3">
+                "{displayedLine}"
+              </p>
+            )}
+            <p className="text-zinc-400 text-xs uppercase tracking-widest mb-3">Genius Annotation</p>
+            <p className="text-zinc-200 text-sm leading-relaxed">{displayed}</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -124,6 +149,7 @@ function App() {
   const [lines, setLines] = useState([])
   const [activeIndex, setActiveIndex] = useState(0)
   const [activeAnnotation, setActiveAnnotation] = useState(null)
+  const [annotationTriggerLine, setAnnotationTriggerLine] = useState(null)
   const linesRef = useRef([])
 
   // Keep the ref in sync with lines state
@@ -131,6 +157,17 @@ function App() {
   useEffect(() => {
     linesRef.current = lines
   }, [lines])
+
+  // Auto-show annotation when the active lyric has one
+  // Stays sticky — we only update when we hit a new annotated line,
+  // never clear it, so the last annotation stays visible between annotated lines
+  useEffect(() => {
+    const line = linesRef.current[activeIndex]
+    if (line?.annotation) {
+      setActiveAnnotation(line.annotation)
+      setAnnotationTriggerLine(line.text)
+    }
+  }, [activeIndex])
 
   useEffect(() => {
     async function start() {
@@ -144,8 +181,8 @@ function App() {
       async function onTrackChange(track) {
         setCurrentTrack(track)
         setLines([])
-        // Clear annotation panel when track changes
         setActiveAnnotation(null)
+        setAnnotationTriggerLine(null)
 
         const [lyrics, annotations] = await Promise.all([
           fetchSyncedLyrics(track),
@@ -181,13 +218,13 @@ function App() {
 
   return (
     <div className="bg-zinc-950 min-h-screen text-white flex flex-col">
-      <div className="flex flex-1 overflow-hidden pb-24">
+      <div className="flex flex-1 overflow-hidden pb-24 pr-80">
         <LyricsPanel
           lines={lines}
           activeIndex={activeIndex}
-          onLineClick={setActiveAnnotation}
+          onLineClick={(annotation, text) => { setActiveAnnotation(annotation); setAnnotationTriggerLine(text) }}
         />
-        <AnnotationPanel annotation={activeAnnotation} />
+        <AnnotationPanel annotation={activeAnnotation} triggerLine={annotationTriggerLine} />
       </div>
       <NowPlayingBar track={currentTrack} />
     </div>
