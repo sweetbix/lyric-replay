@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getAccessToken } from './auth.js';
+import { searchSong, getReferents, scrapeLyrics, matchAnnotations } from './genius.js';
 
 const router = Router();
 
@@ -45,6 +46,38 @@ router.get('/currently-playing', async (req, res) => {
         isPlaying: data.is_playing,
         albumArt: data.item.album.images[0]?.url
     });
+});
+
+// ─── GET /api/annotations ─────────────────────────────────────────────────────
+// Accepts ?title= and ?artist= query parameters
+// Returns an array of { fragment, annotation, charIndex } objects
+// The frontend uses these to attach annotations to matching lyric lines
+router.get('/annotations', async (req, res) => {
+    const { title, artist } = req.query;
+
+    if (!title || !artist) {
+        return res.status(400).json({ error: 'title and artist are required' });
+    }
+    
+    try  {
+        const song = await searchSong(title, artist);
+
+        if (!song) {
+            return res.json([]);
+        }
+
+        const [referents, lyrics] = await Promise.all([
+            getReferents(song.id),
+            scrapeLyrics(song.url)
+        ]);
+
+        const annotations = matchAnnotations(lyrics, referents);
+
+        res.json(annotations);
+    } catch (err) {
+        console.error('Error fetching annotations:', err);
+        return res.json([]);
+    }
 });
 
 export default router;
