@@ -76,13 +76,11 @@ function AnnotationPanel({ annotation, triggerLine }) {
   const [displayedLine, setDisplayedLine] = useState(null)
 
   useEffect(() => {
-    if (!annotation) return
-    // Fade out briefly then swap content and fade back in
     setVisible(false)
     const t = setTimeout(() => {
       setDisplayed(annotation)
       setDisplayedLine(triggerLine)
-      setVisible(true)
+      if (annotation) setVisible(true)
     }, 150)
     return () => clearTimeout(t)
   }, [annotation])
@@ -158,16 +156,17 @@ function App() {
     linesRef.current = lines
   }, [lines])
 
-  // Auto-show annotation when the active lyric has one
-  // Stays sticky — we only update when we hit a new annotated line,
-  // never clear it, so the last annotation stays visible between annotated lines
+  // Auto-show annotation when the active lyric has one.
+  // Depends on both activeIndex and lines so it re-runs when lyrics finish
+  // loading for a new track — otherwise activeIndex stays 0 and the effect
+  // never fires for the first line's annotation.
   useEffect(() => {
-    const line = linesRef.current[activeIndex]
+    const line = lines[activeIndex]
     if (line?.annotation) {
       setActiveAnnotation(line.annotation)
       setAnnotationTriggerLine(line.text)
     }
-  }, [activeIndex])
+  }, [activeIndex, lines])
 
   useEffect(() => {
     async function start() {
