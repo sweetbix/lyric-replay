@@ -42,8 +42,10 @@ lyric-replay/
 ├── server/
 │   ├── index.js          # Express entry point
 │   ├── auth.js           # Spotify OAuth routes
+|   ├── api.js
 │   ├── genius.js         # Genius search, referents, Cheerio scraper
 │   └── .env
+|   └── .env.example
 ├── client/
 │   ├── src/
 │   │   ├── app.js        # Main loop + state
@@ -52,7 +54,6 @@ lyric-replay/
 │   │   ├── annotations.js# Genius fetch + fragment matcher
 │   │   └── ui.js         # DOM / React updates
 │   └── index.html
-├── .env.example
 └── README.md
 ```
 
@@ -141,13 +142,22 @@ Open the frontend, click login, approve Spotify access, and play something.
 
 ## Environment variables reference
 
+**Server** (`server/.env`)
 
-| Variable                | Description                                           |
-| ----------------------- | ----------------------------------------------------- |
-| `SPOTIFY_CLIENT_ID`     | From your Spotify Developer app                       |
-| `SPOTIFY_CLIENT_SECRET` | From your Spotify Developer app                       |
-| `SPOTIFY_REDIRECT_URI`  | Must match exactly what's registered in the dashboard |
-| `GENIUS_TOKEN`          | Client access token from genius.com/api-clients       |
+| Variable                | Required | Default                  | Description                                           |
+| ----------------------- | -------- | ------------------------ | ----------------------------------------------------- |
+| `SPOTIFY_CLIENT_ID`     | yes      | —                        | From your Spotify Developer app                       |
+| `SPOTIFY_CLIENT_SECRET` | yes      | —                        | From your Spotify Developer app                       |
+| `SPOTIFY_REDIRECT_URI`  | yes      | —                        | Must match exactly what's registered in the dashboard |
+| `GENIUS_TOKEN`          | yes      | —                        | Client access token from genius.com/api-clients       |
+| `FRONTEND_URL`          | no       | `http://localhost:5173`  | Frontend origin (CORS + post-OAuth redirect)          |
+| `PORT`                  | no       | `3000`                   | Port the Express server listens on                    |
+
+**Client** (`client/.env`)
+
+| Variable           | Required | Default                  | Description                                  |
+| ------------------ | -------- | ------------------------ | -------------------------------------------- |
+| `VITE_SERVER_URL`  | no       | `http://localhost:3000`  | URL of the backend server                    |
 
 
 ---

@@ -1,0 +1,20 @@
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+
+// Fetches annotations from our server for a given track
+// Returns an array of { fragment, annotation, charIndex } objects
+
+export async function fetchAnnotations(track) {
+    const params = new URLSearchParams({
+        title: track.title,
+        artist: track.artist
+    });
+
+    try {
+        const response = await fetch(`${SERVER_URL}/api/annotations?${params}`);
+        if (!response.ok) return [];
+        return await response.json();
+    } catch (err) {
+        console.log('Error fetching annotations:', err);
+        return [];
+    }
+}

@@ -5,6 +5,7 @@ const router = Router();
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const tokens = {
     access: null,
@@ -64,7 +65,7 @@ router.get('/callback', async (req, res) => {
 
     // If Spotify rejected the exchange (e.g. code already used, redirect URI mismatch)
     if (data.error) {
-        return res.status(400).json({ data });
+        return res.status(400).json({ error: data.error });
     }
 
     tokens.access = data.access_token;
@@ -72,7 +73,7 @@ router.get('/callback', async (req, res) => {
     tokens.expiresAt = Date.now() + data.expires_in * 1000;
 
   // Send the user back to the frontend — auth is complete
-  res.redirect('http://localhost:5173');
+  res.redirect(FRONTEND_URL);
 
 });
 
@@ -104,7 +105,7 @@ router.post('/refresh', async (req, res) => {
     const data = await tokenRes.json(); 
 
     if (data.error) { 
-        return res.status(400).json({ data });
+        return res.status(400).json({ error: data.error });
     }
 
     tokens.access = data.access_token;
@@ -118,14 +119,41 @@ router.post('/refresh', async (req, res) => {
 // The frontend calls this on startup to get the current access token
 // Rather than storing the token in the browser (less secure),
 // the frontend asks the server for it whenever it needs 
-router.get('/token', (req, res) => {
+router.get('/token', async (req, res) => {
     if (!tokens.access) {
         return res.status(401).json({ error: 'Not authenticated' });
     }
 
+    if (Date.now() > tokens.expiresAt) {
+        if (!tokens.refresh) {
+            return res.status(401).json({ error: 'Token expired and no refresh token available' });
+        }
+
+        const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
+        const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Basic ${credentials}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                grant_type: 'refresh_token',
+                refresh_token: tokens.refresh,
+            }),
+        });
+
+        const data = await tokenRes.json();
+        if (data.error) {
+            return res.status(400).json({ error: data.error });
+        }
+
+        tokens.access = data.access_token;
+        tokens.expiresAt = Date.now() + data.expires_in * 1000;
+    }
+
     res.json({
         access_token: tokens.access,
-        expires_at: tokens.expiresAt,   
+        expires_at: tokens.expiresAt,
     });
 });
 

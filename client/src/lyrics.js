@@ -36,29 +36,28 @@ export async function fetchSyncedLyrics(track) {
 // Input:  "[00:12.34] Hello world\n[00:15.00] Another line"
 // Output: [{ time: 12340, text: "Hello world" }, { time: 15000, text: "Another line" }]
 function parseLRC(lrc) {
-    return lrc
-    .split('\n')
-    .map(line => {
-        // This regex matches the timestamp format [mm:ss.xx]
-        // match[1] = minutes, match[2] = seconds.centiseconds, match[3] = lyric text
+    const parsed = lrc
+      .split('\n')
+      .map(line => {
         const match = line.match(/\[(\d+):(\d+\.\d+)\](.*)/);
         if (!match) return null;
-
-
-        // Convert minutes and seconds into total milliseconds
-        // This makes it easy to compare against Spotify's progress_ms later
+  
         const minutes = parseInt(match[1]);
         const seconds = parseFloat(match[2]);
         const ms = (minutes * 60 + seconds) * 1000;
-
+  
         return {
-            time: ms,               // timestamp    
-            text: match[3].trim(),  // lyric text
+          time: ms,
+          text: match[3].trim()
         };
-    })
-    .filter(line => line && line.text)
-    .sort((a, b) => a.time - b.time);
-}
+      })
+  
+    // Log what we have before filtering so we can see what's being rejected
+    console.log('BEFORE FILTER:', parsed.slice(0, 5))
+    console.log('UNDEFINED TEXT COUNT:', parsed.filter(l => l && !l.text).length)
+  
+    return parsed.filter(line => line && typeof line.text === 'string' && line.text.length > 0);
+  }
 
 // ─── GET ACTIVE LINE ─────────────────────────────────────────────────────────
 // Given an array of lyric lines and the current playback position,
@@ -75,4 +74,4 @@ export function getActiveLine(lines, positionMs) {
     const index = lines.findLastIndex(line => line.time <= positionMs);
 
     return index === -1 ? 0 : index;
-}
+};
