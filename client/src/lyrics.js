@@ -52,10 +52,6 @@ function parseLRC(lrc) {
         };
       })
   
-    // Log what we have before filtering so we can see what's being rejected
-    console.log('BEFORE FILTER:', parsed.slice(0, 5))
-    console.log('UNDEFINED TEXT COUNT:', parsed.filter(l => l && !l.text).length)
-  
     return parsed.filter(line => line && typeof line.text === 'string' && line.text.length > 0);
   }
 

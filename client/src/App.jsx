@@ -1,12 +1,49 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, Component } from 'react'
 import { initSpotify, pollCurrentlyPlaying, getInterpolatedPosition } from './spotify'
 import { fetchSyncedLyrics, getActiveLine } from './lyrics'
 import { fetchAnnotations } from './annotations'
 import { mergeLyricsAndAnnotations } from './merge'
 
+// ── ERROR BOUNDARY ────────────────────────────────────────────────────────────
+// Catches any render-time or lifecycle errors thrown by child components.
+// Without this, a single unhandled error unmounts the entire app and shows
+// a blank screen. With it, the user sees a message and can recover.
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  componentDidCatch(error, info) {
+    console.error('ErrorBoundary caught:', error, info)
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="bg-zinc-950 min-h-screen flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <p className="text-white font-semibold">Something went wrong</p>
+            <p className="text-zinc-500 text-sm">{this.state.error.message}</p>
+            <button
+              onClick={() => this.setState({ error: null })}
+              className="text-zinc-400 text-sm underline"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 // ── SUBCOMPONENTS ─────────────────────────────────────────────────────────────
-// Same components as before — no changes needed here
-// They just receive props and render — they don't care where the data comes from
 
 function NowPlayingBar({ track }) {
   if (!track) return null
@@ -21,25 +58,41 @@ function NowPlayingBar({ track }) {
   )
 }
 
-function LyricsPanel({ lines, activeIndex, onLineClick }) {
-  // We use a ref here to scroll the active line into view automatically
-  // as the song progresses — the user never has to manually scroll
+// Skeleton bar shown while lyrics are loading
+function SkeletonLine({ width, bright }) {
+  return (
+    <div
+      className={`h-7 rounded-md animate-pulse ${bright ? 'bg-zinc-700' : 'bg-zinc-800'}`}
+      style={{ width }}
+    />
+  )
+}
+
+function LyricsPanel({ lines, activeIndex, onLineClick, loading, noLyrics }) {
   const activeRef = useRef(null)
 
   useEffect(() => {
-    // Whenever the active line changes, scroll it into the center of the viewport
     if (activeRef.current) {
-      activeRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      })
+      activeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }, [activeIndex])
 
-  if (lines.length === 0) {
+  if (loading) {
+    // Pulse skeleton — varied widths feel more realistic than uniform bars
+    const widths = ['75%', '60%', '80%', '55%', '70%', '65%', '78%', '50%']
+    return (
+      <div className="flex-1 overflow-hidden px-8 py-12 space-y-5">
+        {widths.map((w, i) => (
+          <SkeletonLine key={i} width={w} bright={i === 2} />
+        ))}
+      </div>
+    )
+  }
+
+  if (noLyrics) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-zinc-600">Loading lyrics...</p>
+        <p className="text-zinc-600 text-sm">Synced lyrics unavailable for this track</p>
       </div>
     )
   }
@@ -48,7 +101,6 @@ function LyricsPanel({ lines, activeIndex, onLineClick }) {
     <div className="flex-1 overflow-y-auto overflow-x-hidden px-8 py-12 space-y-3">
       {lines.map((line, i) => (
         <p
-          // Attach the ref to whichever line is currently active
           ref={i === activeIndex ? activeRef : null}
           key={i}
           onClick={() => line.annotation && onLineClick(line.annotation, line.text)}
@@ -70,7 +122,7 @@ function LyricsPanel({ lines, activeIndex, onLineClick }) {
   )
 }
 
-function AnnotationPanel({ annotation, triggerLine }) {
+function AnnotationPanel({ annotation, triggerLine, noAnnotations }) {
   const [visible, setVisible] = useState(false)
   const [displayed, setDisplayed] = useState(null)
   const [displayedLine, setDisplayedLine] = useState(null)
@@ -85,13 +137,18 @@ function AnnotationPanel({ annotation, triggerLine }) {
     return () => clearTimeout(t)
   }, [annotation])
 
+  let placeholder
+  if (noAnnotations) {
+    placeholder = 'No annotations available for this track'
+  } else {
+    placeholder = 'Annotations will appear here as the song plays'
+  }
+
   return (
     <div className="fixed right-0 top-0 bottom-24 w-80 border-l border-zinc-800 flex flex-col justify-center">
       <div className="px-6 py-8 overflow-y-auto">
         {!displayed ? (
-          <p className="text-zinc-600 text-sm text-center mt-16">
-            Annotations will appear here as the song plays
-          </p>
+          <p className="text-zinc-600 text-sm text-center">{placeholder}</p>
         ) : (
           <div
             className="transition-all duration-300"
@@ -111,7 +168,8 @@ function AnnotationPanel({ annotation, triggerLine }) {
   )
 }
 
-// ── LOGIN SCREEN ──────────────────────────────────────────────────────────────
+// ── LOGIN / IDLE SCREENS ──────────────────────────────────────────────────────
+
 function LoginScreen() {
   return (
     <div className="bg-zinc-950 min-h-screen flex items-center justify-center">
@@ -129,8 +187,6 @@ function LoginScreen() {
   )
 }
 
-// ── IDLE SCREEN ───────────────────────────────────────────────────────────────
-// Shown when authenticated but nothing is playing
 function IdleScreen() {
   return (
     <div className="bg-zinc-950 min-h-screen flex items-center justify-center">
@@ -139,8 +195,8 @@ function IdleScreen() {
   )
 }
 
-
 // ── MAIN APP COMPONENT ────────────────────────────────────────────────────────
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentTrack, setCurrentTrack] = useState(null)
@@ -148,18 +204,16 @@ function App() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [activeAnnotation, setActiveAnnotation] = useState(null)
   const [annotationTriggerLine, setAnnotationTriggerLine] = useState(null)
+  // null = not yet loaded, true = loading, false = done
+  const [lyricsLoading, setLyricsLoading] = useState(false)
+  const [noLyrics, setNoLyrics] = useState(false)
+  const [noAnnotations, setNoAnnotations] = useState(false)
   const linesRef = useRef([])
 
-  // Keep the ref in sync with lines state
-  // This solves the stale closure problem in setInterval
   useEffect(() => {
     linesRef.current = lines
   }, [lines])
 
-  // Auto-show annotation when the active lyric has one.
-  // Depends on both activeIndex and lines so it re-runs when lyrics finish
-  // loading for a new track — otherwise activeIndex stays 0 and the effect
-  // never fires for the first line's annotation.
   useEffect(() => {
     const line = lines[activeIndex]
     if (line?.annotation) {
@@ -169,8 +223,19 @@ function App() {
   }, [activeIndex, lines])
 
   useEffect(() => {
+    let pollInterval, tickInterval
+    let cancelled = false
+
     async function start() {
-      const authenticated = await initSpotify()
+      let authenticated = false
+      try {
+        authenticated = await initSpotify()
+      } catch (err) {
+        console.error('initSpotify failed:', err)
+      }
+
+      if (cancelled) return
+
       if (!authenticated) {
         setIsAuthenticated(false)
         return
@@ -180,36 +245,61 @@ function App() {
       async function onTrackChange(track) {
         setCurrentTrack(track)
         setLines([])
+        setActiveIndex(0)
         setActiveAnnotation(null)
         setAnnotationTriggerLine(null)
+        setNoLyrics(false)
+        setNoAnnotations(false)
+        setLyricsLoading(true)
 
         const [lyrics, annotations] = await Promise.all([
           fetchSyncedLyrics(track),
           fetchAnnotations(track)
         ])
 
+        if (cancelled) return
+
+        console.log('[debug] lyrics:', lyrics.length, '| annotations:', annotations.length)
+        console.log('[debug] annotation sample:', annotations[0])
         const merged = mergeLyricsAndAnnotations(lyrics, annotations)
+        console.log('[debug] merged with annotation:', merged.filter(l => l.annotation).length)
+
+        setLyricsLoading(false)
+        setNoLyrics(lyrics.length === 0)
+        setNoAnnotations(annotations.length === 0)
         setLines(merged)
       }
 
-      await pollCurrentlyPlaying(onTrackChange)
-      const pollInterval = setInterval(() => {
-        pollCurrentlyPlaying(onTrackChange)
+      try {
+        await pollCurrentlyPlaying(onTrackChange)
+      } catch (err) {
+        console.error('Initial poll failed:', err)
+      }
+
+      if (cancelled) return
+
+      pollInterval = setInterval(async () => {
+        try {
+          await pollCurrentlyPlaying(onTrackChange)
+        } catch (err) {
+          console.error('Poll failed:', err)
+        }
       }, 3000)
 
-      const tickInterval = setInterval(() => {
+      tickInterval = setInterval(() => {
         const position = getInterpolatedPosition()
         const index = getActiveLine(linesRef.current, position)
         setActiveIndex(index)
       }, 100)
-
-      return () => {
-        clearInterval(pollInterval)
-        clearInterval(tickInterval)
-      }
     }
 
     start()
+
+    return () => {
+      cancelled = true
+      clearInterval(pollInterval)
+      clearInterval(tickInterval)
+    }
   }, [])
 
   if (!isAuthenticated) return <LoginScreen />
@@ -222,12 +312,26 @@ function App() {
           lines={lines}
           activeIndex={activeIndex}
           onLineClick={(annotation, text) => { setActiveAnnotation(annotation); setAnnotationTriggerLine(text) }}
+          loading={lyricsLoading}
+          noLyrics={noLyrics}
         />
-        <AnnotationPanel annotation={activeAnnotation} triggerLine={annotationTriggerLine} />
+        <AnnotationPanel
+          annotation={activeAnnotation}
+          triggerLine={annotationTriggerLine}
+          noAnnotations={noAnnotations}
+        />
       </div>
       <NowPlayingBar track={currentTrack} />
     </div>
   )
 }
 
-export default App
+// Wrap in ErrorBoundary at the export so any crash anywhere in the tree
+// shows the fallback UI instead of a blank screen
+export default function Root() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  )
+}
