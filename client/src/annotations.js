@@ -9,8 +9,12 @@ export async function fetchAnnotations(track) {
         artist: track.artist
     });
 
+    const authKey = sessionStorage.getItem('authKey') || '';
+
     try {
-        const response = await fetch(`${SERVER_URL}/api/annotations?${params}`);
+        const response = await fetch(`${SERVER_URL}/api/annotations?${params}`, {
+            headers: { 'X-Auth-Key': authKey },
+        });
         if (!response.ok) return [];
         return await response.json();
     } catch (err) {

@@ -1,14 +1,44 @@
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
 
 let accessToken = null;
+let authKey = null;
 let currentTrackId = null;
 let positionMs = 0;
 let lastPollTime = Date.now();
 let isPlaying = false;
 
+function getAuthKey() {
+    if (authKey) return authKey;
+    authKey = sessionStorage.getItem('authKey');
+    return authKey;
+}
+
+function serverFetchOpts(extra = {}) {
+    return {
+        ...extra,
+        headers: {
+            ...extra.headers,
+            'X-Auth-Key': getAuthKey() || '',
+        },
+    };
+}
+
 export async function initSpotify() {
+    // Pull authKey from URL if this is a post-OAuth redirect
+    const params = new URLSearchParams(window.location.search);
+    const keyFromUrl = params.get('authKey');
+    if (keyFromUrl) {
+        authKey = keyFromUrl;
+        sessionStorage.setItem('authKey', authKey);
+        // Clean the key out of the URL so it isn't leaked in history
+        const clean = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, '', clean);
+    }
+
+    if (!getAuthKey()) return false;
+
     try {
-        const response = await fetch(`${SERVER_URL}/auth/token`);
+        const response = await fetch(`${SERVER_URL}/auth/token`, serverFetchOpts());
         if (!response.ok) return false;
         const data = await response.json();
         accessToken = data.access_token;
@@ -32,7 +62,10 @@ async function spotifyFetch(url) {
 
         // Token expired — attempt a silent refresh
         try {
-            const refreshResponse = await fetch(`${SERVER_URL}/auth/refresh`, { method: 'POST' });
+            const refreshResponse = await fetch(
+                `${SERVER_URL}/auth/refresh`,
+                serverFetchOpts({ method: 'POST' })
+            );
             if (!refreshResponse.ok) {
                 console.error('Token refresh failed:', refreshResponse.status);
                 return null;
