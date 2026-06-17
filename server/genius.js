@@ -91,12 +91,11 @@ export async function scrapeLyrics(url) {
 // means we don't miss fragments just because of inconsistent line breaks
 function normaliseWhitespace(str) {
     return str
-      // collapse all whitespace sequences to a single space
       .replace(/\s+/g, ' ')
-      // replace smart/curly apostrophes and single quotes with straight quote
       .replace(/[\u2018\u2019\u02BC]/g, "'")
-      // replace smart/curly double quotes with straight double quote
       .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()'"?!]/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
   }
 

@@ -259,10 +259,7 @@ function App() {
 
         if (cancelled) return
 
-        console.log('[debug] lyrics:', lyrics.length, '| annotations:', annotations.length)
-        console.log('[debug] annotation sample:', annotations[0])
         const merged = mergeLyricsAndAnnotations(lyrics, annotations)
-        console.log('[debug] merged with annotation:', merged.filter(l => l.annotation).length)
 
         setLyricsLoading(false)
         setNoLyrics(lyrics.length === 0)

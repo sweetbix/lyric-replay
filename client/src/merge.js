@@ -55,5 +55,8 @@ function normalise(str) {
       .replace(/[\u2018\u2019\u02BC]/g, "'")
       .replace(/[\u201C\u201D]/g, '"')
       .toLowerCase()
+      // strip punctuation so comma/period differences don't block matches
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()'"?!]/g, '')
+      .replace(/\s+/g, ' ')  // re-collapse any spaces left by punctuation removal
       .trim();
   }

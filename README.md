@@ -137,6 +137,7 @@ Open the frontend, click login, approve Spotify access, and play something.
 - Genius annotations are community-written and vary wildly in quality and coverage
 - Genius does not serve lyrics via API — the lyrics scrape depends on their page structure, which may break if Genius updates their HTML
 - The Web Playback SDK (for Premium users who want in-app playback control) is not implemented — playback must be started from another Spotify client
+- Annotation matching can miss lines when LRC Lib and Genius transcribe the same lyric differently — for example, LRC Lib rendering `go 'head` as `gon' head`. Because matching is exact string comparison (after normalisation), genuine word-level differences between the two sources produce a miss with no reliable way to recover. Fuzzy/similarity matching would increase coverage but also increase false positives, attaching the wrong annotation to the wrong line.
 
 ---
 
