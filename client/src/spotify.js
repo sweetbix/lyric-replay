@@ -52,7 +52,7 @@ async function spotifyFetch(url) {
 }
 
 export async function pollCurrentlyPlaying(onTrackChange) {
-    const response = await spotifyFetch('https://api.spotify.com/v1/me/player/currently-playing');
+    const response = await spotifyFetch('https://api.spotify.com/v1/me/player');
 
     // null means spotifyFetch hit a network error or refresh failed — skip quietly
     if (!response) return;
