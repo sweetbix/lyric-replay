@@ -137,6 +137,12 @@ function AnnotationPanel({ annotation, triggerLine, noAnnotations }) {
     return () => clearTimeout(t)
   }, [annotation])
 
+  // Update the quoted line instantly when moving between lines that share
+  // the same annotation — no fade needed since the annotation text isn't changing
+  useEffect(() => {
+    setDisplayedLine(triggerLine)
+  }, [triggerLine])
+
   let placeholder
   if (noAnnotations) {
     placeholder = 'No annotations available for this track'
