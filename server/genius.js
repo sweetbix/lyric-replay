@@ -10,7 +10,15 @@ const headers = { Authorization: `Bearer ${GENIUS_TOKEN}` };
 // The song object contains the song's Genius ID and its lyrics page URL
 // both of which we need for subsequent calls
 export async function searchSong(title, artist) {
-    const query = encodeURIComponent(`${title} ${artist}`);
+    // Spotify titles often include collaborator tags like "(with Alesso & watt)"
+    // or "(feat. X)" that don't appear in Genius titles — strip them before searching
+    const cleanTitle = title
+        .replace(/\s*\(with [^)]+\)/gi, '')
+        .replace(/\s*\(feat\.?[^)]+\)/gi, '')
+        .replace(/\s*\(ft\.?[^)]+\)/gi, '')
+        .trim();
+
+    const query = encodeURIComponent(`${cleanTitle} ${artist}`);
 
     const response = await fetch(
         `https://api.genius.com/search?q=${query}`,
