@@ -160,12 +160,22 @@ function AnnotationPanel({ annotation, triggerLine, noAnnotations }) {
             className="transition-all duration-300"
             style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(8px)' }}
           >
+            {/* Genius branding badge */}
+            <div className="flex items-center gap-2 mb-4">
+              <img src="https://genius.com/favicon.ico" width="16" height="16" className="rounded-sm" style={{ filter: 'brightness(0) saturate(100%) invert(97%) sepia(100%) saturate(2000%) hue-rotate(10deg)' }} />
+              <span
+                className="text-xs font-bold tracking-widest uppercase"
+                style={{ color: '#FFFF64', fontFamily: "'Arial Black', 'Arial', sans-serif", letterSpacing: '0.15em' }}
+              >
+                Genius Annotation
+              </span>
+            </div>
+
             {displayedLine && (
-              <p className="text-zinc-500 text-xs italic mb-3 leading-relaxed border-l-2 border-zinc-700 pl-3">
+              <p className="text-zinc-400 text-xs italic mb-3 leading-relaxed border-l-2 pl-3" style={{ borderColor: '#FFFF6480' }}>
                 "{displayedLine}"
               </p>
             )}
-            <p className="text-zinc-400 text-xs uppercase tracking-widest mb-3">Genius Annotation</p>
             <p className="text-zinc-200 text-sm leading-relaxed">{displayed}</p>
           </div>
         )}
