@@ -193,7 +193,7 @@ function LoginScreen() {
         <h1 className="text-white text-3xl font-bold">Lyric Replay</h1>
         <p className="text-zinc-400">See what your music really means</p>
         <a
-          href="http://localhost:3000/auth/login"
+          href="http://127.0.0.1:3000/auth/login"
           className="inline-block bg-green-500 hover:bg-green-400 text-black font-semibold px-8 py-3 rounded-full transition-colors"
         >
           Login with Spotify

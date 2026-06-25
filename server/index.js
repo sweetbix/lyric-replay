@@ -9,7 +9,11 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const app = express();
 
-app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+app.use(cors({
+    origin: [FRONTEND_URL, FRONTEND_URL.replace('localhost', '127.0.0.1')],
+    allowedHeaders: ['Content-Type', 'X-Session-Token'],
+    credentials: true,
+}));
 app.use(express.json());
 
 app.use('/auth', authRouter);

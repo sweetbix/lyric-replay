@@ -1,47 +1,43 @@
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://127.0.0.1:3000';
 
 let accessToken = null;
-let authKey = null;
 let currentTrackId = null;
 let positionMs = 0;
 let lastPollTime = Date.now();
 let isPlaying = false;
 
-function getAuthKey() {
-    if (authKey) return authKey;
-    authKey = sessionStorage.getItem('authKey');
-    return authKey;
+function getSession() {
+    return sessionStorage.getItem('session');
+}
+
+function saveSession(session) {
+    if (session) sessionStorage.setItem('session', session);
 }
 
 function serverFetchOpts(extra = {}) {
     return {
         ...extra,
-        headers: {
-            ...extra.headers,
-            'X-Auth-Key': getAuthKey() || '',
-        },
+        headers: { ...extra.headers, 'X-Session-Token': getSession() || '' },
     };
 }
 
 export async function initSpotify() {
-    // Pull authKey from URL if this is a post-OAuth redirect
+    // Pull session token from URL after OAuth redirect
     const params = new URLSearchParams(window.location.search);
-    const keyFromUrl = params.get('authKey');
-    if (keyFromUrl) {
-        authKey = keyFromUrl;
-        sessionStorage.setItem('authKey', authKey);
-        // Clean the key out of the URL so it isn't leaked in history
-        const clean = window.location.pathname + window.location.hash;
-        window.history.replaceState({}, '', clean);
+    const sessionFromUrl = params.get('session');
+    if (sessionFromUrl) {
+        saveSession(sessionFromUrl);
+        window.history.replaceState({}, '', window.location.pathname + window.location.hash);
     }
 
-    if (!getAuthKey()) return false;
+    if (!getSession()) return false;
 
     try {
         const response = await fetch(`${SERVER_URL}/auth/token`, serverFetchOpts());
         if (!response.ok) return false;
         const data = await response.json();
         accessToken = data.access_token;
+        saveSession(data.session);
         return true;
     } catch (err) {
         console.error('Failed to fetch token:', err);
@@ -49,9 +45,6 @@ export async function initSpotify() {
     }
 }
 
-// All Spotify API calls go through here. On 401 it silently refreshes the
-// token and retries once. If the refresh itself fails we return null so the
-// caller can skip gracefully rather than crashing.
 async function spotifyFetch(url) {
     try {
         const response = await fetch(url, {
@@ -60,20 +53,16 @@ async function spotifyFetch(url) {
 
         if (response.status !== 401) return response;
 
-        // Token expired — attempt a silent refresh
         try {
             const refreshResponse = await fetch(
                 `${SERVER_URL}/auth/refresh`,
                 serverFetchOpts({ method: 'POST' })
             );
-            if (!refreshResponse.ok) {
-                console.error('Token refresh failed:', refreshResponse.status);
-                return null;
-            }
+            if (!refreshResponse.ok) return null;
             const data = await refreshResponse.json();
             accessToken = data.access_token;
-        } catch (err) {
-            console.error('Token refresh request failed:', err);
+            saveSession(data.session);
+        } catch {
             return null;
         }
 
@@ -87,7 +76,6 @@ async function spotifyFetch(url) {
 export async function pollCurrentlyPlaying(onTrackChange) {
     const response = await spotifyFetch('https://api.spotify.com/v1/me/player');
 
-    // null means spotifyFetch hit a network error or refresh failed — skip quietly
     if (!response) return;
 
     if (response.status === 204) {
@@ -98,8 +86,7 @@ export async function pollCurrentlyPlaying(onTrackChange) {
     let data;
     try {
         data = await response.json();
-    } catch (err) {
-        console.error('Failed to parse Spotify response:', err);
+    } catch {
         return;
     }
 

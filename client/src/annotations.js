@@ -1,4 +1,4 @@
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
 
 // Fetches annotations from our server for a given track
 // Returns an array of { fragment, annotation, charIndex } objects
@@ -9,11 +9,9 @@ export async function fetchAnnotations(track) {
         artist: track.artist
     });
 
-    const authKey = sessionStorage.getItem('authKey') || '';
-
     try {
         const response = await fetch(`${SERVER_URL}/api/annotations?${params}`, {
-            headers: { 'X-Auth-Key': authKey },
+            headers: { 'X-Session-Token': sessionStorage.getItem('session') || '' },
         });
         if (!response.ok) return [];
         return await response.json();
