@@ -45,15 +45,21 @@ class ErrorBoundary extends Component {
 
 // ── SUBCOMPONENTS ─────────────────────────────────────────────────────────────
 
-function NowPlayingBar({ track }) {
+function NowPlayingBar({ track, onLogout }) {
   if (!track) return null
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 px-6 py-4 flex items-center gap-4">
       <img src={track.albumArt} alt="Album art" className="w-14 h-14 rounded-md object-cover" />
-      <div>
+      <div className="flex-1">
         <p className="text-white font-semibold text-sm">{track.title}</p>
         <p className="text-zinc-400 text-sm">{track.artist}</p>
       </div>
+      <button
+        onClick={onLogout}
+        className="text-zinc-500 hover:text-white text-xs px-3 py-1.5 rounded-md hover:bg-zinc-800 transition-colors"
+      >
+        Log out
+      </button>
     </div>
   )
 }
@@ -315,6 +321,13 @@ function App() {
     }
   }, [])
 
+  function handleLogout() {
+    sessionStorage.removeItem('session')
+    setIsAuthenticated(false)
+    setCurrentTrack(null)
+    setLines([])
+  }
+
   if (!isAuthenticated) return <LoginScreen />
   if (!currentTrack) return <IdleScreen />
 
@@ -334,7 +347,7 @@ function App() {
           noAnnotations={noAnnotations}
         />
       </div>
-      <NowPlayingBar track={currentTrack} />
+      <NowPlayingBar track={currentTrack} onLogout={handleLogout} />
     </div>
   )
 }
