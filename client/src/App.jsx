@@ -143,10 +143,11 @@ function AnnotationPanel({ annotation, triggerLine, noAnnotations }) {
     return () => clearTimeout(t)
   }, [annotation])
 
-  // Update the quoted line instantly when moving between lines that share
-  // the same annotation — no fade needed since the annotation text isn't changing
+  // Update the quoted line instantly only when moving between lines that share
+  // the same annotation — when the annotation itself changes, the main effect
+  // above handles displayedLine inside the timeout after the fade-out
   useEffect(() => {
-    setDisplayedLine(triggerLine)
+    if (annotation === displayed) setDisplayedLine(triggerLine)
   }, [triggerLine])
 
   let placeholder
