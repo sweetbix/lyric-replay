@@ -109,6 +109,7 @@ router.get('/callback', async (req, res) => {
         access: data.access_token,
         refresh: data.refresh_token,
         expiresAt: Date.now() + data.expires_in * 1000,
+        keyExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
     });
 
     res.redirect(`${FRONTEND_URL}?session=${session}`);
@@ -116,11 +117,13 @@ router.get('/callback', async (req, res) => {
 
 router.post('/refresh', async (req, res) => {
     const tokens = getTokens(req);
-    if (!tokens?.refresh) return res.status(401).json({ error: 'Not authenticated' });
+    if (!tokens?.refresh || Date.now() > tokens.keyExpiresAt) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
 
     try {
         const updated = await refreshTokens(tokens);
-        res.json({ access_token: updated.access, session: encrypt(updated) });
+        res.json({ access_token: updated.access, session: encrypt({ ...updated, keyExpiresAt: tokens.keyExpiresAt }) });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -129,7 +132,11 @@ router.post('/refresh', async (req, res) => {
 router.get('/token', async (req, res) => {
     let tokens = getTokens(req);
 
-    if (!tokens?.access) return res.status(401).json({ error: 'Not authenticated' });
+    if (!tokens?.access || Date.now() > tokens.keyExpiresAt) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { keyExpiresAt } = tokens;
 
     if (Date.now() > tokens.expiresAt) {
         try {
@@ -142,7 +149,7 @@ router.get('/token', async (req, res) => {
     res.json({
         access_token: tokens.access,
         expires_at: tokens.expiresAt,
-        session: encrypt(tokens),
+        session: encrypt({ ...tokens, keyExpiresAt }),
     });
 });
 
