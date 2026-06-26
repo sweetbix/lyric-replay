@@ -154,7 +154,7 @@ function AnnotationPanel({ annotation, triggerLine, noAnnotations }) {
   if (noAnnotations) {
     placeholder = 'No annotations available for this track'
   } else {
-    placeholder = 'Annotations will appear here as the song plays'
+    placeholder = 'Annotations will appear here as the song plays, or click on an underlined lyric'
   }
 
   return (
@@ -625,10 +625,18 @@ function DemoScreen({ onBack }) {
           </button>
         </div>
         {!noVideo && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
               <div className="h-full bg-zinc-400 rounded-full" style={{ width: `${progressPct}%` }} />
             </div>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" className="text-zinc-500 flex-shrink-0">
+              <path d="M2 5h2l3-3v10L4 9H2V5zm7 .5a3 3 0 010 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+            </svg>
+            <input
+              type="range" min="0" max="100" defaultValue="100"
+              onChange={e => playerRef.current?.setVolume(Number(e.target.value))}
+              className="w-20 accent-zinc-400"
+            />
           </div>
         )}
       </div>
