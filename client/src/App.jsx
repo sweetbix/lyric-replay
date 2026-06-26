@@ -218,10 +218,18 @@ function LoginScreen({ onDemo }) {
   )
 }
 
-function IdleScreen() {
+function IdleScreen({ onLogout }) {
   return (
     <div className="bg-zinc-950 min-h-screen flex items-center justify-center">
-      <p className="text-zinc-600">Play something on Spotify to get started</p>
+      <div className="text-center space-y-3">
+        <p className="text-zinc-600">Play something on Spotify to get started</p>
+        <button
+          onClick={onLogout}
+          className="text-zinc-700 hover:text-zinc-400 text-xs transition-colors"
+        >
+          Log out
+        </button>
+      </div>
     </div>
   )
 }
@@ -338,7 +346,7 @@ function App({ onDemo }) {
   }
 
   if (!isAuthenticated) return <LoginScreen onDemo={onDemo} />
-  if (!currentTrack) return <IdleScreen />
+  if (!currentTrack) return <IdleScreen onLogout={handleLogout} />
 
   return (
     <div className="bg-zinc-950 min-h-screen text-white flex flex-col">
