@@ -194,25 +194,51 @@ function AnnotationPanel({ annotation, triggerLine, noAnnotations }) {
 // ── LOGIN / IDLE SCREENS ──────────────────────────────────────────────────────
 
 function LoginScreen({ onDemo }) {
+  const [query, setQuery] = useState('')
+
+  function handleSearch(e) {
+    e.preventDefault()
+    if (query.trim()) onDemo(query.trim())
+  }
+
   return (
-    <div className="bg-zinc-950 min-h-screen flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <h1 className="text-white text-3xl font-bold">Lyric Replay</h1>
-        <p className="text-zinc-400">See what your music really means</p>
+    <div className="bg-zinc-950 min-h-screen flex items-center justify-center px-4">
+      <div className="text-center space-y-6 max-w-sm w-full">
+        <div className="space-y-2">
+          <h1 className="text-white text-3xl font-bold">Lyric Replay</h1>
+          <p className="text-zinc-400 text-sm">See what your music really means</p>
+        </div>
+
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search for any song..."
+            className="flex-1 bg-zinc-800 text-white placeholder-zinc-500 rounded-full px-5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-zinc-600"
+          />
+          <button
+            type="submit"
+            className="bg-white text-black font-semibold px-5 py-2.5 rounded-full text-sm hover:bg-zinc-200 transition-colors"
+          >
+            Go
+          </button>
+        </form>
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-zinc-800" />
+          <span className="text-zinc-600 text-xs">or</span>
+          <div className="flex-1 h-px bg-zinc-800" />
+        </div>
+
         <a
           href="http://127.0.0.1:3000/auth/login"
-          className="inline-block bg-green-500 hover:bg-green-400 text-black font-semibold px-8 py-3 rounded-full transition-colors"
+          className="flex items-center justify-center gap-3 bg-[#1DB954] hover:bg-[#1ed760] text-black font-semibold px-6 py-3 rounded-full text-sm transition-colors"
         >
-          Login with Spotify
+          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+          </svg>
+          Log in with Spotify
         </a>
-        <div>
-          <button
-            onClick={onDemo}
-            className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
-          >
-            Try demo (no login required) →
-          </button>
-        </div>
       </div>
     </div>
   )
@@ -373,8 +399,8 @@ function App({ onDemo }) {
 
 const DEMO_SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://127.0.0.1:3000'
 
-function DemoScreen({ onBack }) {
-  const [query, setQuery] = useState('')
+function DemoScreen({ onBack, initialQuery = '' }) {
+  const [query, setQuery] = useState(initialQuery)
   const [results, setResults] = useState(null)
   const [searching, setSearching] = useState(false)
   const [track, setTrack] = useState(null)
@@ -459,19 +485,27 @@ function DemoScreen({ onBack }) {
     }
   }
 
-  async function search(e) {
-    e.preventDefault()
-    if (!query.trim()) return
+  async function runSearch(q) {
+    if (!q.trim()) return
     setSearching(true)
     setResults(null)
     try {
-      const res = await fetch(`${DEMO_SERVER_URL}/api/demo/search?q=${encodeURIComponent(query)}`)
+      const res = await fetch(`${DEMO_SERVER_URL}/api/demo/search?q=${encodeURIComponent(q)}`)
       setResults(await res.json())
     } catch {
       setResults([])
     }
     setSearching(false)
   }
+
+  async function search(e) {
+    e.preventDefault()
+    runSearch(query)
+  }
+
+  useEffect(() => {
+    if (initialQuery.trim()) runSearch(initialQuery.trim())
+  }, [])
 
   async function selectTrack(t) {
     clearInterval(tickRef.current)
@@ -528,7 +562,6 @@ function DemoScreen({ onBack }) {
       <div className="bg-zinc-950 min-h-screen flex flex-col items-center justify-center gap-6 px-4">
         <div className="text-center">
           <h1 className="text-white text-3xl font-bold mb-1">Lyric Replay</h1>
-          <p className="text-zinc-400 text-sm">Demo — full songs, no login needed</p>
         </div>
         <form onSubmit={search} className="flex gap-2 w-full max-w-md">
           <input
@@ -567,7 +600,7 @@ function DemoScreen({ onBack }) {
         )}
 
         <button onClick={onBack} className="text-zinc-600 hover:text-zinc-400 text-xs transition-colors">
-          ← Back to login
+          ← Back home
         </button>
       </div>
     )
@@ -656,11 +689,18 @@ function DemoScreen({ onBack }) {
 // shows the fallback UI instead of a blank screen
 export default function Root() {
   const [mode, setMode] = useState('login')
+  const [demoQuery, setDemoQuery] = useState('')
+
+  function enterDemo(q = '') {
+    setDemoQuery(q)
+    setMode('demo')
+  }
+
   return (
     <ErrorBoundary>
       {mode === 'demo'
-        ? <DemoScreen onBack={() => setMode('login')} />
-        : <App onDemo={() => setMode('demo')} />
+        ? <DemoScreen onBack={() => setMode('login')} initialQuery={demoQuery} />
+        : <App onDemo={enterDemo} />
       }
     </ErrorBoundary>
   )
