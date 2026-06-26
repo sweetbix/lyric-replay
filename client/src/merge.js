@@ -12,10 +12,12 @@
 
 export function mergeLyricsAndAnnotations(lines, annotations) {
     // Pre-normalise once instead of per-line × per-annotation
-    const prepared = annotations.map(ann => ({
-        annotation: ann.annotation,
-        normalisedFragment: normalise(ann.fragment)
-    }));
+    const prepared = annotations
+        .map(ann => ({
+            annotation: ann.annotation,
+            normalisedFragment: normalise(ann.fragment)
+        }))
+        .filter(ann => ann.normalisedFragment.length >= 4);
 
     return lines.map(line => {
         const normalisedLine = normalise(line.text);
