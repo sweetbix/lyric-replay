@@ -43,6 +43,9 @@ router.get('/demo/youtube', async (req, res) => {
             `https://www.googleapis.com/youtube/v3/search?${new URLSearchParams({ part: 'snippet', type: 'video', q, maxResults: 1, videoCategoryId: '10', key: apiKey })}`
         );
         const data = await r.json();
+        if (data.error?.errors?.some(e => e.reason === 'quotaExceeded')) {
+            return res.status(429).json({ error: 'quota_exceeded', videoId: null });
+        }
         const videoId = data.items?.[0]?.id?.videoId ?? null;
         res.json({ videoId });
     } catch (err) {

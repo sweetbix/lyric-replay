@@ -7,24 +7,26 @@
 // We fetch from LRC Lib and parse that format into usable objects
 
 export async function fetchSyncedLyrics(track) {
-    const params = new URLSearchParams({
+    const baseParams = {
         track_name: track.title,
         artist_name: track.artist,
         album_name: track.album,
-        duration: Math.round(track.duration / 1000)
-    });
+    };
+
+    async function tryFetch(params) {
+        const response = await fetch(`https://lrclib.net/api/get?${new URLSearchParams(params)}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.syncedLyrics ? parseLRC(data.syncedLyrics) : null;
+    }
 
     try {
-        const response = await fetch(`https://lrclib.net/api/get?${params}`);
+        // Try with duration first (exact match), then fall back without it
+        const withDuration = await tryFetch({ ...baseParams, duration: Math.round(track.duration / 1000) });
+        if (withDuration) return withDuration;
 
-        if (!response.ok) return [];
-
-        const data = await response.json();
-
-        if (!data.syncedLyrics) return [];
-
-        // Parse the raw .lrc string into an array of {time, text} objects
-        return parseLRC(data.syncedLyrics);
+        const withoutDuration = await tryFetch(baseParams);
+        return withoutDuration ?? [];
     } catch (err) {
         console.error('LRC Lib fetch failed:', err);
         return [];
