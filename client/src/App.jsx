@@ -48,15 +48,15 @@ class ErrorBoundary extends Component {
 function NowPlayingBar({ track, onLogout }) {
   if (!track) return null
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 px-6 py-4 flex items-center gap-4">
-      <img src={track.albumArt} alt="Album art" className="w-14 h-14 rounded-md object-cover" />
-      <div className="flex-1">
-        <p className="text-white font-semibold text-sm">{track.title}</p>
-        <p className="text-zinc-400 text-sm">{track.artist}</p>
+    <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 px-4 py-3 md:px-6 md:py-4 flex items-center gap-3 md:gap-4">
+      <img src={track.albumArt} alt="Album art" className="w-10 h-10 md:w-14 md:h-14 rounded-md object-cover flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-white font-semibold text-sm truncate">{track.title}</p>
+        <p className="text-zinc-400 text-sm truncate">{track.artist}</p>
       </div>
       <button
         onClick={onLogout}
-        className="text-zinc-500 hover:text-white text-xs px-3 py-1.5 rounded-md hover:bg-zinc-800 transition-colors"
+        className="text-zinc-500 hover:text-white text-xs px-3 py-1.5 rounded-md hover:bg-zinc-800 transition-colors flex-shrink-0"
       >
         Log out
       </button>
@@ -87,7 +87,7 @@ function LyricsPanel({ lines, activeIndex, onLineClick, loading, noLyrics }) {
     // Pulse skeleton — varied widths feel more realistic than uniform bars
     const widths = ['75%', '60%', '80%', '55%', '70%', '65%', '78%', '50%']
     return (
-      <div className="flex-1 overflow-hidden px-8 py-12 space-y-5">
+      <div className="flex-1 overflow-hidden px-4 md:px-8 py-8 md:py-12 space-y-5">
         {widths.map((w, i) => (
           <SkeletonLine key={i} width={w} bright={i === 2} />
         ))}
@@ -104,14 +104,14 @@ function LyricsPanel({ lines, activeIndex, onLineClick, loading, noLyrics }) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden px-8 py-12 space-y-3">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-8 md:py-12 space-y-3">
       {lines.map((line, i) => (
         <p
           ref={i === activeIndex ? activeRef : null}
           key={i}
           onClick={() => line.annotation && onLineClick(line.annotation, line.text)}
           className={`
-            text-2xl font-semibold transition-all duration-300 leading-snug
+            text-lg md:text-2xl font-semibold transition-all duration-300 leading-snug
             ${i === activeIndex
               ? 'text-white scale-105 origin-left'
               : i < activeIndex
@@ -157,37 +157,49 @@ function AnnotationPanel({ annotation, triggerLine, noAnnotations }) {
     placeholder = 'Annotations will appear here as the song plays, or click on an underlined lyric'
   }
 
-  return (
-    <div className="fixed right-0 top-0 bottom-24 w-80 border-l border-zinc-800 flex flex-col justify-center">
-      <div className="px-6 py-8 overflow-y-auto">
-        {!displayed ? (
-          <p className="text-zinc-600 text-sm text-center">{placeholder}</p>
-        ) : (
-          <div
-            className="transition-all duration-300"
-            style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(8px)' }}
-          >
-            {/* Genius branding badge */}
-            <div className="flex items-center gap-2 mb-4">
-              <img src="https://genius.com/favicon.ico" width="16" height="16" className="rounded-sm" style={{ filter: 'brightness(0) saturate(100%) invert(97%) sepia(100%) saturate(2000%) hue-rotate(10deg)' }} />
-              <span
-                className="text-xs font-bold tracking-widest uppercase"
-                style={{ color: '#FFFF64', fontFamily: "'Arial Black', 'Arial', sans-serif", letterSpacing: '0.15em' }}
-              >
-                Genius Annotation
-              </span>
-            </div>
-
-            {displayedLine && (
-              <p className="text-zinc-400 text-xs italic mb-3 leading-relaxed border-l-2 pl-3" style={{ borderColor: '#FFFF6480' }}>
-                "{displayedLine}"
-              </p>
-            )}
-            <p className="text-zinc-200 text-sm leading-relaxed">{displayed}</p>
+  const annotationContent = (
+    <>
+      {!displayed ? (
+        <p className="text-zinc-600 text-sm text-center">{placeholder}</p>
+      ) : (
+        <div
+          className="transition-all duration-300"
+          style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(8px)' }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <img src="https://genius.com/favicon.ico" width="16" height="16" className="rounded-sm" style={{ filter: 'brightness(0) saturate(100%) invert(97%) sepia(100%) saturate(2000%) hue-rotate(10deg)' }} />
+            <span
+              className="text-xs font-bold tracking-widest uppercase"
+              style={{ color: '#FFFF64', fontFamily: "'Arial Black', 'Arial', sans-serif", letterSpacing: '0.15em' }}
+            >
+              Genius Annotation
+            </span>
           </div>
-        )}
+          {displayedLine && (
+            <p className="text-zinc-400 text-xs italic mb-3 leading-relaxed border-l-2 pl-3" style={{ borderColor: '#FFFF6480' }}>
+              "{displayedLine}"
+            </p>
+          )}
+          <p className="text-zinc-200 text-sm leading-relaxed">{displayed}</p>
+        </div>
+      )}
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile: slide-up bottom drawer, sits above the player bar (~64px tall) */}
+      <div
+        className={`md:hidden fixed left-0 right-0 bottom-16 bg-zinc-900 border-t border-zinc-800 max-h-48 overflow-y-auto transition-transform duration-300 ${visible && displayed ? 'translate-y-0' : 'translate-y-full'}`}
+      >
+        <div className="px-4 py-4">{annotationContent}</div>
       </div>
-    </div>
+
+      {/* Desktop: fixed right sidebar */}
+      <div className="hidden md:flex fixed right-0 top-0 bottom-24 w-80 border-l border-zinc-800 flex-col justify-center">
+        <div className="px-6 py-8 overflow-y-auto">{annotationContent}</div>
+      </div>
+    </>
   )
 }
 
@@ -380,7 +392,7 @@ function App({ onDemo }) {
 
   return (
     <div className="bg-zinc-950 min-h-screen text-white flex flex-col">
-      <div className="flex flex-1 overflow-hidden pb-24 pr-80">
+      <div className="flex flex-1 overflow-hidden pb-16 md:pb-24 md:pr-80">
         <LyricsPanel
           lines={lines}
           activeIndex={activeIndex}
@@ -624,7 +636,7 @@ function DemoScreen({ onBack, initialQuery = '' }) {
         <div id="yt-player" />
       </div>
 
-      <div className="flex flex-1 overflow-hidden pb-24 pr-80">
+      <div className="flex flex-1 overflow-hidden pb-16 md:pb-24 md:pr-80">
         <LyricsPanel
           lines={lines}
           activeIndex={activeIndex}
@@ -640,15 +652,15 @@ function DemoScreen({ onBack, initialQuery = '' }) {
       </div>
 
       {/* Demo bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 px-6 py-4">
-        <div className="flex items-center gap-4 mb-3">
-          {track.albumArt && <img src={track.albumArt} className="w-10 h-10 rounded object-cover flex-shrink-0" />}
+      <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 px-4 py-3 md:px-6 md:py-4">
+        <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-3">
+          {track.albumArt && <img src={track.albumArt} className="w-9 h-9 md:w-10 md:h-10 rounded object-cover flex-shrink-0" />}
           <div className="flex-1 min-w-0">
             <p className="text-white font-semibold text-sm truncate">{track.title}</p>
             <p className="text-zinc-400 text-xs truncate">{track.artist}</p>
           </div>
           {noVideo ? (
-            <span className="text-zinc-600 text-xs">{quotaExceeded ? 'YouTube quota reached — try again tomorrow' : 'Audio unavailable'}</span>
+            <span className="text-zinc-600 text-xs hidden sm:inline">{quotaExceeded ? 'YouTube quota reached — try again tomorrow' : 'Audio unavailable'}</span>
           ) : (
             <button
               onClick={togglePlay}
