@@ -9,6 +9,7 @@ const PORT = Number(process.env.PORT) || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const app = express();
+app.set('trust proxy', 1);
 
 const allowedOrigins = [
     FRONTEND_URL,
