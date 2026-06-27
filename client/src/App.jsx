@@ -231,7 +231,7 @@ function LoginScreen({ onDemo }) {
         </div>
 
         <a
-          href="http://127.0.0.1:3000/auth/login"
+          href={`${SERVER_URL}/auth/login`}
           className="flex items-center justify-center gap-3 bg-[#1DB954] hover:bg-[#1ed760] text-black font-semibold px-6 py-3 rounded-full text-sm transition-colors"
         >
           <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg">
@@ -259,6 +259,8 @@ function IdleScreen({ onLogout }) {
     </div>
   )
 }
+
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://127.0.0.1:3000'
 
 // ── MAIN APP COMPONENT ────────────────────────────────────────────────────────
 
@@ -317,10 +319,12 @@ function App({ onDemo }) {
         setNoAnnotations(false)
         setLyricsLoading(true)
 
-        const [lyrics, annotations] = await Promise.all([
+        const [lyricsResult, annotationsResult] = await Promise.allSettled([
           fetchSyncedLyrics(track),
           fetchAnnotations(track)
         ])
+        const lyrics = lyricsResult.status === 'fulfilled' ? lyricsResult.value : []
+        const annotations = annotationsResult.status === 'fulfilled' ? annotationsResult.value : []
 
         if (cancelled) return
 
@@ -397,8 +401,6 @@ function App({ onDemo }) {
 
 // ── DEMO MODE ─────────────────────────────────────────────────────────────────
 
-const DEMO_SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://127.0.0.1:3000'
-
 function DemoScreen({ onBack, initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery)
   const [results, setResults] = useState(null)
@@ -415,6 +417,7 @@ function DemoScreen({ onBack, initialQuery = '' }) {
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [noVideo, setNoVideo] = useState(false)
+  const [quotaExceeded, setQuotaExceeded] = useState(false)
 
   const playerRef = useRef(null)       // YT.Player instance
   const tickRef = useRef(null)
@@ -490,7 +493,7 @@ function DemoScreen({ onBack, initialQuery = '' }) {
     setSearching(true)
     setResults(null)
     try {
-      const res = await fetch(`${DEMO_SERVER_URL}/api/demo/search?q=${encodeURIComponent(q)}`)
+      const res = await fetch(`${SERVER_URL}/api/demo/search?q=${encodeURIComponent(q)}`)
       setResults(await res.json())
     } catch {
       setResults([])
@@ -519,15 +522,19 @@ function DemoScreen({ onBack, initialQuery = '' }) {
     setCurrentTime(0)
     setDuration(0)
     setNoVideo(false)
+    setQuotaExceeded(false)
     setLyricsLoading(true)
     setNoLyrics(false)
     setNoAnnotations(false)
 
-    const [lyrics, annotations, ytRes] = await Promise.all([
+    const [lyricsResult, annotationsResult, ytResult] = await Promise.allSettled([
       fetchSyncedLyrics(t),
       fetchAnnotations(t),
-      fetch(`${DEMO_SERVER_URL}/api/demo/youtube?${new URLSearchParams({ title: t.title, artist: t.artist })}`).then(r => r.json()).catch(() => ({ videoId: null })),
+      fetch(`${SERVER_URL}/api/demo/youtube?${new URLSearchParams({ title: t.title, artist: t.artist })}`).then(r => r.json()),
     ])
+    const lyrics = lyricsResult.status === 'fulfilled' ? lyricsResult.value : []
+    const annotations = annotationsResult.status === 'fulfilled' ? annotationsResult.value : []
+    const ytRes = ytResult.status === 'fulfilled' ? ytResult.value : { videoId: null }
 
     const merged = mergeLyricsAndAnnotations(lyrics, annotations)
     setLyricsLoading(false)
@@ -539,6 +546,7 @@ function DemoScreen({ onBack, initialQuery = '' }) {
       initPlayer(ytRes.videoId)
     } else {
       setNoVideo(true)
+      if (ytRes.error === 'quota_exceeded') setQuotaExceeded(true)
     }
   }
 
@@ -640,7 +648,7 @@ function DemoScreen({ onBack, initialQuery = '' }) {
             <p className="text-zinc-400 text-xs truncate">{track.artist}</p>
           </div>
           {noVideo ? (
-            <span className="text-zinc-600 text-xs">Audio unavailable</span>
+            <span className="text-zinc-600 text-xs">{quotaExceeded ? 'YouTube quota reached — try again tomorrow' : 'Audio unavailable'}</span>
           ) : (
             <button
               onClick={togglePlay}

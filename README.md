@@ -1,165 +1,154 @@
 # Lyric Replay
 
-Real-time synced lyrics with Genius annotations for your currently playing Spotify track.
+Search any song and see its lyrics sync live — with Genius annotations surfacing what each line actually means, right as it plays.
+
+Type a song into the search bar, pick a result, and watch the lyrics highlight in time with the audio. Underlined lines have a Genius annotation attached; click one (or just let the song play) and the explanation fades in on the right. No account needed.
+
+If you use Spotify, you can also log in to sync Lyric Replay to whatever you're already listening to — lyrics and annotations follow your playback automatically, across any device.
 
 ---
 
-## What it does
+## Features
 
-Lyric Replay polls your Spotify account every 3 seconds to detect what you're listening to. When a track changes, it fetches timestamped lyrics from LRC Lib and annotations from Genius in parallel, then merges them. Every 100ms, it interpolates your playback position and highlights the current lyric line — surfacing any Genius annotation attached to it in a side panel.
-
----
-
-## Tech stack
-
-
-| Layer    | Tech                                        |
-| -------- | ------------------------------------------- |
-| Frontend | React + Vite                                |
-| Backend  | Node.js + Express                           |
-| Scraping | Cheerio                                     |
-| Auth     | Spotify OAuth 2.0 (Authorization Code flow) |
-
+- **Search any song** — powered by Deezer metadata and YouTube audio; no account required
+- **Genius annotations** — crowdsourced explanations, trivia, and literary breakdowns appear in a side panel as each annotated line becomes active, or on click
+- **Timestamped lyrics** — lyrics highlight in sync with playback, updated every 100 ms
+- **Spotify live mode** — log in with Spotify to follow your real-time playback instead of searching manually
+- **Graceful degradation** — missing lyrics, annotations, or audio are each surfaced independently without breaking the rest of the UI
 
 ---
 
-## External services
-
-
-| Service         | Used for                                   | Auth required                  |
-| --------------- | ------------------------------------------ | ------------------------------ |
-| Spotify Web API | Currently playing track, position, library | OAuth (free account supported) |
-| Genius API      | Song search, referents (annotations)       | Bearer token                   |
-| LRC Lib         | Timestamped synced lyrics                  | None                           |
-
-
----
-
-## Project structure
+## Architecture
 
 ```
-lyric-replay/
-├── server/
-│   ├── index.js          # Express entry point
-│   ├── auth.js           # Spotify OAuth routes
-|   ├── api.js
-│   ├── genius.js         # Genius search, referents, Cheerio scraper
-│   └── .env
-|   └── .env.example
-├── client/
-│   ├── src/
-│   │   ├── app.js        # Main loop + state
-│   │   ├── spotify.js    # Polling + token management
-│   │   ├── lyrics.js     # LRC Lib fetch + LRC parser
-│   │   ├── annotations.js# Genius fetch + fragment matcher
-│   │   └── ui.js         # DOM / React updates
-│   └── index.html
-└── README.md
+┌─────────────────────────────────────────────────────────┐
+│                    Browser (React / Vite)                │
+│                                                          │
+│  ┌──────────┐    ┌──────────────┐    ┌───────────────┐  │
+│  │  Login / │    │  App (Spotify│    │  DemoScreen   │  │
+│  │  search  │    │  live mode)  │    │  (no-auth)    │  │
+│  └──────────┘    └──────┬───────┘    └───────┬───────┘  │
+│                         │                    │           │
+│            sessionStorage (encrypted token)  │           │
+└─────────────────────────┼────────────────────┼───────────┘
+                          │ X-Session-Token     │
+                          ▼                     ▼
+┌─────────────────────────────────────────────────────────┐
+│              Express server (Node.js)                   │
+│                                                         │
+│   /auth/login → /auth/callback  (Spotify OAuth)         │
+│   /auth/token  /auth/refresh    (token management)      │
+│   /api/annotations              (Genius API proxy)      │
+│   /api/demo/search              (Deezer proxy)          │
+│   /api/demo/youtube             (YouTube Data API)      │
+└───────┬──────────────┬────────────────┬─────────────────┘
+        │              │                │
+        ▼              ▼                ▼
+   Spotify API    Genius API      YouTube / Deezer
+
+Browser also calls directly:
+   LRC Lib API  (timestamped lyrics — no key needed)
 ```
 
 ---
 
-## Prerequisites
+## Tech Stack
 
-- Node.js 18+
-- A Spotify account (free works — no Premium required)
-- A Spotify Developer app — register at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
-- A Genius API client — register at [genius.com/api-clients](https://genius.com/api-clients)
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite 8, Tailwind CSS v4 |
+| Backend | Node.js, Express 5 |
+| Lyrics | [LRC Lib](https://lrclib.net) (free, no key) |
+| Annotations | Genius API |
+| Demo audio | YouTube IFrame API |
+| Demo metadata | Deezer API (no key) |
+| Auth | Spotify OAuth 2.0 + AES-256-GCM session tokens |
+| Deployment | Vercel (frontend) + Railway or Render (backend) |
 
 ---
 
-## Setup
+## Local Development
 
-**1. Clone and install**
+### Prerequisites
+
+- Node.js 20+
+- A [Spotify Developer app](https://developer.spotify.com/dashboard) with `http://127.0.0.1:3000/auth/callback` in Redirect URIs
+- A [Genius API client](https://genius.com/api-clients) (client access token)
+- A [Google Cloud](https://console.cloud.google.com) project with YouTube Data API v3 enabled (for demo mode)
+
+### Setup
 
 ```bash
-git clone https://github.com/you/lyric-replay.git
+# 1. Clone
+git clone https://github.com/your-username/lyric-replay
 cd lyric-replay
- 
-cd server && npm install
-cd ../client && npm install
+
+# 2. Server
+cd server
+npm install
+cp .env.example .env
+# Fill in your credentials in server/.env
+npm run dev          # starts on http://127.0.0.1:3000
+
+# 3. Client (separate terminal)
+cd ../client
+npm install
+npm run dev          # starts on http://localhost:5173
 ```
 
-**2. Configure environment variables**
+### Environment Variables
 
-Copy `.env.example` to `server/.env` and fill in your credentials:
+#### `server/.env`
 
-```
-SPOTIFY_CLIENT_ID=
-SPOTIFY_CLIENT_SECRET=
-SPOTIFY_REDIRECT_URI=http://localhost:3000/auth/callback
-GENIUS_TOKEN=
-```
+| Variable | Required | Description |
+|---|---|---|
+| `SPOTIFY_CLIENT_ID` | Yes | From Spotify Developer Dashboard |
+| `SPOTIFY_CLIENT_SECRET` | Yes | From Spotify Developer Dashboard |
+| `SPOTIFY_REDIRECT_URI` | Yes | Must match Spotify dashboard exactly — use `http://127.0.0.1:3000/auth/callback` for local dev |
+| `GENIUS_TOKEN` | Yes | Client access token from genius.com/api-clients |
+| `YOUTUBE_API_KEY` | Yes | Google Cloud → YouTube Data API v3 |
+| `SESSION_SECRET` | Prod only | 64-char hex string — `openssl rand -hex 32`. Random key used if absent (sessions die on restart) |
+| `FRONTEND_URL` | Prod only | Your Vercel deployment URL — used for CORS and post-OAuth redirect |
+| `PORT` | No | Server port (default: `3000`) |
+| `NODE_ENV` | Prod only | Set to `production` to enforce `SESSION_SECRET` validation |
 
-**3. Register your redirect URI**
+#### `client/.env` (create if needed)
 
-In your Spotify Developer Dashboard, add `http://localhost:3000/auth/callback` as an allowed redirect URI.
-
-**4. Run**
-
-In two separate terminals:
-
-```bash
-# Terminal 1 — backend
-cd server && node index.js
- 
-# Terminal 2 — frontend
-cd client && npm run dev
-```
-
-Frontend runs on `http://localhost:5173`. Backend runs on `http://localhost:3000`.
-
-Open the frontend, click login, approve Spotify access, and play something.
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_SERVER_URL` | `http://127.0.0.1:3000` | Backend URL — set to your Railway/Render URL in production |
 
 ---
 
-## How it works
+## How It Works
 
 **On every 3-second Spotify poll:**
+- If the track ID changed, lyrics (LRC Lib) and annotations (Genius) are fetched in parallel
+- Each fragment from Genius is matched to its position in the lyrics text by normalised string search
+- The merged result — `[{ time, text, annotation }]` — is stored in state
 
-- If the track ID has changed, a track-change event fires
-- LRC Lib and Genius are fetched in parallel (`Promise.all`)
-- Genius annotations are matched to lyric lines by string-searching each fragment against the full lyrics text
-- The merged result (`[{ time, text, annotation }]`) is stored in state
-**Every 100ms:**
-- Playback position is interpolated from the last known Spotify timestamp
-- The active lyric line is found via `findLastIndex(line => line.time <= posMs)`
-- If that line has an annotation, it's displayed in the annotation panel
-**Token refresh:**
-- Spotify access tokens expire after 60 minutes
-- All Spotify fetch calls wrap a 401 handler that hits `/auth/refresh` and retries silently
+**Every 100 ms:**
+- Playback position is interpolated from the last known Spotify timestamp using `Date.now()`
+- `findLastIndex(line => line.time <= position)` finds the active line
+- If that line has an annotation, it fades into the side panel
 
----
-
-## Known limitations
-
-- LRC Lib doesn't have synced lyrics for every track — the app falls back to an "unavailable" state rather than crashing
-- Genius annotations are community-written and vary wildly in quality and coverage
-- Genius does not serve lyrics via API — the lyrics scrape depends on their page structure, which may break if Genius updates their HTML
-- The Web Playback SDK (for Premium users who want in-app playback control) is not implemented — playback must be started from another Spotify client
-- Annotation matching can miss lines when LRC Lib and Genius transcribe the same lyric differently — for example, LRC Lib rendering `go 'head` as `gon' head`. Because matching is exact string comparison (after normalisation), genuine word-level differences between the two sources produce a miss with no reliable way to recover. Fuzzy/similarity matching would increase coverage but also increase false positives, attaching the wrong annotation to the wrong line.
+**Token management:**
+- Spotify access tokens expire after 60 minutes; a 401 response triggers a silent `/auth/refresh` call and a retry
+- The session token (encrypted with AES-256-GCM, stored in `sessionStorage`) is updated after each refresh and never touches a cookie or server-side store
 
 ---
 
-## Environment variables reference
+## Known Limitations
 
-**Server** (`server/.env`)
-
-| Variable                | Required | Default                  | Description                                           |
-| ----------------------- | -------- | ------------------------ | ----------------------------------------------------- |
-| `SPOTIFY_CLIENT_ID`     | yes      | —                        | From your Spotify Developer app                       |
-| `SPOTIFY_CLIENT_SECRET` | yes      | —                        | From your Spotify Developer app                       |
-| `SPOTIFY_REDIRECT_URI`  | yes      | —                        | Must match exactly what's registered in the dashboard |
-| `GENIUS_TOKEN`          | yes      | —                        | Client access token from genius.com/api-clients       |
-| `FRONTEND_URL`          | no       | `http://localhost:5173`  | Frontend origin (CORS + post-OAuth redirect)          |
-| `PORT`                  | no       | `3000`                   | Port the Express server listens on                    |
-
-**Client** (`client/.env`)
-
-| Variable           | Required | Default                  | Description                                  |
-| ------------------ | -------- | ------------------------ | -------------------------------------------- |
-| `VITE_SERVER_URL`  | no       | `http://localhost:3000`  | URL of the backend server                    |
-
+- **YouTube quota** — YouTube Data API v3 free tier allows ~100 searches/day. The app shows "YouTube quota reached — try again tomorrow" when exhausted.
+- **Genius coverage** — many tracks have no annotations, especially non-English or indie releases. The side panel shows a placeholder.
+- **LRC Lib coverage** — synced lyrics are unavailable for some tracks. The app shows "Synced lyrics unavailable for this track".
+- **Annotation matching** — when LRC Lib and Genius transcribe the same lyric differently (e.g. `go 'head` vs `gon' head`), the match fails silently. Fuzzy matching would increase coverage but also risk false positives.
+- **No playback control** — Spotify scopes are read-only; playback must be started from another client.
+- **Demo mode drift** — YouTube video start times vary; lyrics may be slightly ahead or behind the audio.
 
 ---
 
+## License
+
+MIT
