@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto';
 
 const router = Router();
 
@@ -11,10 +11,8 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 // 32-byte AES key. Set SESSION_SECRET to a stable 64-char hex string in prod
 // so sessions survive restarts. Without it a random key is generated per run.
 const SECRET = process.env.SESSION_SECRET || randomBytes(32).toString('hex');
-if (process.env.NODE_ENV === 'production' && SECRET.length < 64) {
-    throw new Error('SESSION_SECRET must be a 64-character hex string in production (generate with: openssl rand -hex 32)');
-}
-const KEY = Buffer.from(SECRET.slice(0, 64).padEnd(64, '0'), 'hex');
+// Hash the secret to always get exactly 32 bytes regardless of format/length
+const KEY = createHash('sha256').update(SECRET).digest();
 
 function encrypt(obj) {
     const iv = randomBytes(12);
