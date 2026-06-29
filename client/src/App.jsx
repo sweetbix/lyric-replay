@@ -192,7 +192,7 @@ function AnnotationPanel({ annotation, triggerLine, noAnnotations }) {
       <div
         className={`md:hidden fixed left-0 right-0 bottom-16 bg-zinc-900 border-t border-zinc-800 max-h-48 overflow-y-auto transition-transform duration-300 ${visible && displayed ? 'translate-y-0' : 'translate-y-full'}`}
       >
-        <div className="px-4 py-4">{annotationContent}</div>
+        <div className="px-4 py-6">{annotationContent}</div>
       </div>
 
       {/* Desktop: fixed right sidebar */}
